@@ -1,9 +1,12 @@
+import java.net.*
+
 plugins {
     kotlin("jvm")
     application
     `maven-publish`
     id("com.google.cloud.tools.jib")
     id("com.github.johnrengelman.shadow")
+    id("com.github.hierynomus.license")
 }
 
 val scriptUrl: String by extra
@@ -24,13 +27,13 @@ dependencies {
 val appMainClassName by extra("com.epam.drill.proxy.ProxyKt")
 
 val appJvmArgs = listOf(
-        "-server",
-        "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005",
-        "-Djava.awt.headless=true",
-        "-Xms128m",
-        "-Xmx2g",
-        "-XX:+UseG1GC",
-        "-XX:MaxGCPauseMillis=100"
+    "-server",
+    "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005",
+    "-Djava.awt.headless=true",
+    "-Xms128m",
+    "-Xmx2g",
+    "-XX:+UseG1GC",
+    "-XX:MaxGCPauseMillis=100"
 )
 
 java {
@@ -41,8 +44,6 @@ application {
     mainClassName = appMainClassName
     applicationDefaultJvmArgs = appJvmArgs
 }
-
-
 
 jib {
     from {
@@ -58,3 +59,15 @@ jib {
         jvmFlags = appJvmArgs
     }
 }
+
+val licenseFormatSettings by tasks.registering(com.hierynomus.gradle.license.tasks.LicenseFormat::class) {
+    source = fileTree(project.projectDir).also {
+        include("**/*.kt", "**/*.java", "**/*.groovy")
+        exclude("**/.idea")
+    }.asFileTree
+}
+license {
+    headerURI = URI("https://raw.githubusercontent.com/Drill4J/drill4j/develop/COPYRIGHT")
+}
+
+tasks["licenseFormat"].dependsOn(licenseFormatSettings)
