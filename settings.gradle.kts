@@ -1,5 +1,6 @@
 rootProject.name = "browser-proxy"
 
+include("proxy-agent")
 pluginManagement {
     val kotlinVersion: String by extra
     val jibVersion: String by extra

@@ -1,3 +1,4 @@
+import com.google.cloud.tools.jib.gradle.*
 import java.net.*
 
 plugins {
@@ -16,11 +17,11 @@ repositories {
     mavenCentral()
 }
 
-val browserupProxyVersion: String by extra
+val littleProxyVersion: String by extra
 
 dependencies {
     implementation(kotlin("stdlib"))
-    implementation("com.browserup:browserup-proxy-core:$browserupProxyVersion")
+    implementation("xyz.rogfam:littleproxy:$littleProxyVersion")
     implementation("io.netty:netty-all:4.1.44.Final")
 }
 
@@ -40,9 +41,38 @@ java {
     targetCompatibility = JavaVersion.VERSION_1_8
 }
 
+val agentDir = "$buildDir/proxy-agent"
+
 application {
     mainClassName = appMainClassName
-    applicationDefaultJvmArgs = appJvmArgs
+    applicationDefaultJvmArgs = appJvmArgs + "-javaagent:$agentDir/agent-shadow.jar"
+}
+
+tasks {
+    val makeAgentDir by registering(Copy::class) {
+        group = "build"
+        val agentJar = project("proxy-agent").buildDir
+            .resolve("libs")
+            .resolve("agent-shadow.jar")
+        dependsOn(project("proxy-agent").tasks.named("shadowJar"))
+        from(agentJar)
+        into(agentDir)
+    }
+
+    val makeJibDirs by registering(Copy::class){
+        group = "jib"
+        into(agentDir)
+        from("littleproxy_keystore.jks")
+        dependsOn(makeAgentDir)
+    }
+
+    withType<JibTask> {
+        dependsOn(makeJibDirs)
+    }
+
+    (run){
+        dependsOn(makeAgentDir)
+    }
 }
 
 jib {
@@ -56,7 +86,11 @@ jib {
     container {
         ports = listOf("7777", "5005")
         mainClass = appMainClassName
-        jvmFlags = appJvmArgs
+        jvmFlags = appJvmArgs + "-javaagent:agent-shadow.jar"
+    }
+    extraDirectories {
+        setPaths(agentDir)
+        permissions = mapOf("/build/proxy-agent" to "775")
     }
 }
 
